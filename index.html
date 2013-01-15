@@ -1,0 +1,115 @@
+<html>
+  <head>
+    <title>Fellows Words</title>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="d3-cloud/d3.layout.cloud.js"></script>
+    <script type="text/javascript">
+
+    /* Pull down latest Fellows info*/
+    $.getJSON('fellows.json', function(jsonData) {
+      
+      allWords = biosToWords(jsonData);
+      wordCounts = countWords(allWords);
+      displayWords = wordsForDisplay(wordCounts);
+
+      // Turn bios into list of words
+      function biosToWords(jsonData){
+        var allWords = [];
+        $.each(jsonData, function(key,fellows){
+          words = fellows.fellow.bio.split(' ');
+          words = cleanWords(words);
+          allWords = allWords.concat(words);
+        });
+        return allWords;
+      }
+
+      // Clean words up for display, remove punctuation and lower case
+      function cleanWords(words){
+        cleanedWords = [];
+        $.each(words,function(key,word){
+          word = word.toLowerCase().replace(/[^\w\s]|_/g, "")
+                                   .replace(/\s+/g, " ");
+          cleanedWords.push(word);
+        });
+        return cleanedWords;
+      }
+      
+      // Add a count to each word.
+      function countWords(words){
+        var wordCounts = [];
+        var wordsCopy = words.slice(0);
+        for (i in words){
+          var currentCount = 1;
+          var currentWord = '';
+          currentWord = words[i];
+          for (x in wordsCopy){
+            if (wordsCopy[x] == currentWord){
+              currentCount++;
+              delete wordsCopy[x];
+            }
+          }
+          var wordCount = {};
+          wordCount.word = words[i];
+          wordCount.count = currentCount;
+          wordCounts.push(wordCount);
+        }
+        return wordCounts;
+      }
+
+      // Settings for which words to display.
+      function wordsForDisplay(wordCounts){
+        var displayWords = [];
+        $.each(wordCounts, function(key,wordCount){
+          if (wordCount.word.length > 3){
+            if(wordCount.count > 3){
+              // D3 Cloud lib needs object with text and size
+              displayWord = {text: wordCount.word, size: wordCount.count}
+              displayWords.push(displayWord);
+            }
+          }
+        });
+        return displayWords;
+      }
+
+      // D3 Cloud Settings
+
+      var h = $(window).height();
+      var w = $(window).width();
+
+      var fill = d3.scale.category10();
+
+      d3.layout.cloud().size([w, h])
+          .words(displayWords)
+          .font("Impact")
+          .fontSize(function(d) { return d.size + 25 + Math.random() * 90; })
+          .rotate(function() { return ~~(Math.random() * 2) * 90; })
+          .on("end", draw)
+          .start();
+
+      function draw(words) {
+        d3.select("body").append("svg")
+            .attr("width", w)
+            .attr("height", h)
+          .append("g")
+            .attr("transform", "translate("+w/2+","+h/2+")")
+          .selectAll("text")
+            .data(words)
+          .enter().append("text")
+            .style("font-size", function(d) { return d.size + "px"; })
+            .style("font-family", "Impact")
+            .style("fill", function(d, i) { return fill(i); })
+            .attr("text-anchor", "middle")
+            .attr("transform", function(d) {
+              return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+            })
+            .text(function(d) { return d.text; });
+      }
+
+    });
+
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
